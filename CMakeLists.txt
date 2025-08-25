@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(toni_lsm VERSION 0.0.1 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -99,11 +99,13 @@ target_link_libraries(server PRIVATE redis lsm_shared)
 set_target_properties(server PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Tests
+include(GoogleTest)
 macro(add_test_target name src deps)
     add_executable(${name} ${src})
     target_include_directories(${name} PUBLIC ${SPDLOG_INCLUDE_DIR} ${TOML11_INCLUDE_DIR} include)
     target_link_libraries(${name} PRIVATE lsm_shared gtest gtest_main gmock gmock_main ${deps})
     add_test(NAME ${name} COMMAND ${name})
+    gtest_discover_tests(${name})
 endmacro()
 
 add_test_target(test_config test/test_config.cpp "logger;config")
