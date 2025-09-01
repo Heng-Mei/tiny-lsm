@@ -1,11 +1,9 @@
-#include "../include/logger/logger.h"
-#include "../include/skiplist/skiplist.h"
+#include <gtest/gtest.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
-#include <gtest/gtest.h>
 #include <iomanip>
 #include <latch>
 #include <random>
@@ -15,6 +13,8 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "../include/logger/logger.h"
+#include "../include/skiplist/skiplist.h"
 
 using namespace ::tiny_lsm;
 
@@ -107,7 +107,7 @@ TEST(SkipListTest, EmptySkipList) {
 
   // 验证空跳表的查找和删除
   EXPECT_FALSE(skipList.get("nonexistent_key", 0).is_valid());
-  skipList.remove("nonexistent_key"); // 删除不存在的key
+  skipList.remove("nonexistent_key");  // 删除不存在的key
 }
 
 // 测试随机插入和删除
@@ -173,6 +173,11 @@ TEST(SkipListTest, Iterator) {
   std::vector<std::pair<std::string, std::string>> result;
   for (auto it = skipList.begin(); it != skipList.end(); ++it) {
     result.push_back(*it);
+
+    EXPECT_LE(result.size(), 3);
+    if (result.size() > 3) {
+      break;
+    }
   }
 
   EXPECT_EQ(result.size(), 3);
@@ -195,14 +200,17 @@ TEST(SkipListTest, IteratorPreffix) {
 
   // 测试前缀 "ap"
   auto it = skipList.begin_preffix("ap");
+  ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "apple");
 
   // 测试前缀 "ba"
   it = skipList.begin_preffix("ba");
+  ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "banana");
 
   // 测试前缀 "ch"
   it = skipList.begin_preffix("ch");
+  ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "cherry");
 
   // 测试前缀 "z"
@@ -211,14 +219,17 @@ TEST(SkipListTest, IteratorPreffix) {
 
   // 测试前缀 "berr"
   it = skipList.begin_preffix("berr");
+  ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "berry");
 
   // 测试前缀 "a"
   it = skipList.begin_preffix("a");
+  ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "apple");
 
   // 测试前缀结束位置
   it = skipList.end_preffix("a");
+  ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "banana");
 
   it = skipList.end_preffix("cherry");
@@ -229,7 +240,6 @@ TEST(SkipListTest, IteratorPreffix) {
 }
 
 TEST(SkipListTest, ItersPredicate_Base) {
-
   SkipList skipList;
   skipList.put("prefix1", "value1", 0);
   skipList.put("prefix2", "value2", 0);
@@ -243,7 +253,7 @@ TEST(SkipListTest, ItersPredicate_Base) {
 
   // 测试前缀匹配
   auto prefix_result =
-      skipList.iters_monotony_predicate([](const std::string &key) {
+      skipList.iters_monotony_predicate([](const std::string& key) {
         auto match_str = key.substr(0, 3);
         if (match_str == "pre") {
           return 0;
@@ -264,9 +274,9 @@ TEST(SkipListTest, ItersPredicate_Base) {
   EXPECT_EQ(prefix_begin_iter.get_value(), "value3");
 
   // 测试范围匹配
-  auto range = std::make_pair("l", "n"); // [l, n)
+  auto range = std::make_pair("l", "n");  // [l, n)
   auto range_result =
-      skipList.iters_monotony_predicate([&range](const std::string &key) {
+      skipList.iters_monotony_predicate([&range](const std::string& key) {
         if (key < range.first) {
           return 1;
         } else if (key >= range.second) {
@@ -278,7 +288,7 @@ TEST(SkipListTest, ItersPredicate_Base) {
   ASSERT_TRUE(range_result.has_value());
   auto [range_begin_iter, range_end_iter] = range_result.value();
   EXPECT_EQ(range_end_iter.get_key(),
-            "other"); // end_iter 是开区间，所以指向 "prefix1"
+            "other");  // end_iter 是开区间，所以指向 "prefix1"
   EXPECT_EQ(range_begin_iter.get_key(), "longerkey");
   ++range_begin_iter;
   EXPECT_EQ(range_begin_iter.get_key(), "medium");
@@ -308,7 +318,7 @@ TEST(SkipListTest, ItersPredicate_Large) {
 
   skipList.remove("key1015");
 
-  auto result = skipList.iters_monotony_predicate([](const std::string &key) {
+  auto result = skipList.iters_monotony_predicate([](const std::string& key) {
     if (key < "key1010") {
       return 1;
     } else if (key >= "key1020") {
@@ -487,7 +497,7 @@ TEST(SkipListTest, TransactionId) {
 //             num_writers * num_operations); // 跳表大小不应超过最大可能值
 // }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   init_spdlog_file();
   return RUN_ALL_TESTS();

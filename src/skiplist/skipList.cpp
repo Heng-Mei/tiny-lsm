@@ -12,28 +12,40 @@ namespace tiny_lsm {
 // ************************ SkipListIterator ************************
 BaseIterator& SkipListIterator::operator++() {
   // TODO: Lab1.2 任务：实现SkipListIterator的++操作符
+  if (current != nullptr) {
+    current = current->forward_.front();
+  }
+
   return *this;
 }
 
 bool SkipListIterator::operator==(const BaseIterator& other) const {
   // TODO: Lab1.2 任务：实现SkipListIterator的==操作符
-  return true;
+  if (get_type() != other.get_type()) {
+    return false;
+  }
+
+  return current == dynamic_cast<decltype(*this)&>(other).current;
 }
 
 bool SkipListIterator::operator!=(const BaseIterator& other) const {
   // TODO: Lab1.2 任务：实现SkipListIterator的!=操作符
-  return true;
+  return !(*this == other);
 }
 
 SkipListIterator::value_type SkipListIterator::operator*() const {
   // TODO: Lab1.2 任务：实现SkipListIterator的*操作符
-  return {"", ""};
+  if (current == nullptr) {
+    throw std::runtime_error("SkipListIterator is nullptr");
+  }
+
+  return {current->key_, current->value_};
 }
 
 IteratorType SkipListIterator::get_type() const {
   // TODO: Lab1.2 任务：实现SkipListIterator的get_type
   // ? 主要是为了熟悉基类的定义和继承关系
-  return IteratorType::Undefined;
+  return IteratorType::SkipListIterator;
 }
 
 bool SkipListIterator::is_valid() const {
@@ -114,7 +126,9 @@ void SkipList::put(const std::string& key,
       new_node_ptr->forward_[i]->set_backward(i, new_node_ptr);
     }
   }
-  size_bytes += sizeof(new_node_ptr);
+
+  size_bytes += strlen(key.c_str()) * sizeof(char) +
+                strlen(value.c_str()) * sizeof(char) + sizeof(tranc_id);
 }
 
 // 查找键值对
@@ -165,6 +179,10 @@ void SkipList::remove(const std::string& key) {
       ptr->forward_[i]->set_backward(i, prev);
     }
   }
+
+  size_bytes -= strlen(ptr->key_.c_str()) * sizeof(char) +
+                strlen(ptr->value_.c_str()) * sizeof(char) +
+                sizeof(ptr->tranc_id_);
 }
 
 // 刷盘时可以直接遍历最底层链表
