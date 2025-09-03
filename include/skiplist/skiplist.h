@@ -102,9 +102,9 @@ class SkipListIterator : public BaseIterator {
 class SkipList {
  private:
   std::shared_ptr<SkipListNode>
-      head;  // 跳表的头节点，不存储实际数据，用于遍历跳表
-  int max_level;      // 跳表的最大层级数，限制跳表的高度
-  int current_level;  // 跳表当前的实际层级数，动态变化
+      head;               // 跳表的头节点，不存储实际数据，用于遍历跳表
+  int max_level;          // 跳表的最大层级数，限制跳表的高度
+  int current_level;      // 跳表当前的实际层级数，动态变化
   size_t size_bytes = 0;  // 跳表当前占用的内存大小（字节数），用于跟踪内存使用
   // std::shared_mutex rw_mutex; // ! 目前看起来这个锁是冗余的, 在上层控制即可,
   // 后续考虑是否需要细粒度的锁
@@ -152,8 +152,79 @@ class SkipList {
   SkipListIterator end();
   SkipListIterator end_preffix(const std::string& preffix);
 
-  std::optional<std::pair<SkipListIterator, SkipListIterator>>
-  iters_monotony_predicate(std::function<int(const std::string&)> predicate);
+  // ? 这里单调谓词的含义是, 整个数据库只会有一段连续区间满足此谓词
+  // ? 例如之前特化的前缀查询，以及后续可能的范围查询，都可以转化为谓词查询
+  // ? 返回第一个满足谓词的位置和最后一个满足谓词的迭代器
+  // ? 如果不存在, 范围nullptr
+  // ? 谓词作用于key, 且保证满足谓词的结果只在一段连续的区间内,
+  // 例如前缀匹配的谓词 ? predicate返回值: ?   0: 满足谓词 ?   >0: 不满足谓词,
+  // 需要向右移动 ?   <0: 不满足谓词, 需要向左移动 ! Skiplist
+  // 中的谓词查询不会进行事务id的判断, 需要上层自己进行判断
+  template <typename F>
+    requires std::is_invocable_r_v<int, F, const std::string&>
+  auto iters_monotony_predicate(F&& predicate)
+      -> std::optional<std::pair<SkipListIterator, SkipListIterator>> {
+    auto start = lower_bound(std::string{},
+                             [&](const std::string& key, const std::string&) {
+                               return predicate(key) < 0;
+                             });
+
+    if (!start) {
+      return std::nullopt;
+    }
+
+    auto end = upper_bound(std::string{},
+                           [&](const std::string&, const std::string& key) {
+                             return predicate(key) <= 0;
+                           });
+
+    return std::make_optional(
+        std::make_pair(*start, end ? *end : SkipListIterator{nullptr}));
+  }
+
+  template <typename Value,
+            std::predicate<const std::string&, const Value&> Compare>
+  auto lower_bound(const Value& value, Compare comp)
+      -> std::optional<SkipListIterator> {
+    auto ptr = head;
+    for (int i = max_level - 1; i >= 0; i--) {
+      while (ptr->forward_[i] != nullptr &&
+             comp(ptr->forward_[i]->value_, value)) {
+        ptr = ptr->forward_[i];
+      }
+    }
+    if (ptr->forward_[0] == nullptr) {
+      return std::nullopt;
+    }
+    return std::make_optional(SkipListIterator{ptr->forward_[0]});
+  }
+
+  template <typename Value>
+  auto lower_bound(const Value& value) -> std::optional<SkipListIterator> {
+    return lower_bound(value, std::less<std::string>{});
+  }
+
+  template <typename Value,
+            std::predicate<const Value&, const std::string&> Compare>
+  auto upper_bound(const Value& value, Compare comp)
+      -> std::optional<SkipListIterator> {
+    auto ptr = head;
+    for (int i = max_level - 1; i >= 0; i--) {
+      while (ptr->forward_[i] != nullptr &&
+             !comp(value, ptr->forward_[i]->value_)) {
+        ptr = ptr->forward_[i];
+      }
+    }
+    if (ptr->forward_[0] == nullptr) {
+      return std::nullopt;
+    }
+    return std::make_optional(SkipListIterator{ptr->forward_[0]});
+  }
+
+  template <typename Value>
+  auto upper_bound(const Value& value) -> std::optional<SkipListIterator> {
+    return upper_bound(value, std::less<std::string>{});
+  }
 
   void print_skiplist();
 };

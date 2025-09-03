@@ -225,32 +225,24 @@ SkipListIterator SkipList::end() {
 
 // 找到前缀的起始位置
 // 返回第一个前缀匹配或者大于前缀的迭代器
-SkipListIterator SkipList::begin_preffix(const std::string& preffix) {
+SkipListIterator SkipList::begin_preffix(const std::string& prefix) {
   // TODO: Lab1.3 任务：实现前缀查询的起始位置
-  return SkipListIterator{};
+  auto it_opt = lower_bound(prefix);
+  return it_opt ? *it_opt : SkipListIterator{nullptr};
 }
 
 // 找到前缀的终结位置
 SkipListIterator SkipList::end_preffix(const std::string& prefix) {
   // TODO: Lab1.3 任务：实现前缀查询的终结位置
-  return SkipListIterator{};
-}
+  std::string next_prefix = prefix;
+  if (!next_prefix.empty()) {
+    next_prefix.back()++;
+  } else {
+    next_prefix = "\xff";
+  }
 
-// ? 这里单调谓词的含义是, 整个数据库只会有一段连续区间满足此谓词
-// ? 例如之前特化的前缀查询，以及后续可能的范围查询，都可以转化为谓词查询
-// ? 返回第一个满足谓词的位置和最后一个满足谓词的迭代器
-// ? 如果不存在, 范围nullptr
-// ? 谓词作用于key, 且保证满足谓词的结果只在一段连续的区间内, 例如前缀匹配的谓词
-// ? predicate返回值:
-// ?   0: 满足谓词
-// ?   >0: 不满足谓词, 需要向右移动
-// ?   <0: 不满足谓词, 需要向左移动
-// ! Skiplist 中的谓词查询不会进行事务id的判断, 需要上层自己进行判断
-std::optional<std::pair<SkipListIterator, SkipListIterator>>
-SkipList::iters_monotony_predicate(
-    std::function<int(const std::string&)> predicate) {
-  // TODO: Lab1.3 任务：实现谓词查询的起始位置
-  return std::nullopt;
+  auto it_opt = lower_bound(next_prefix);
+  return it_opt ? *it_opt : SkipListIterator{nullptr};
 }
 
 // ? 打印跳表, 你可以在出错时调用此函数进行调试
