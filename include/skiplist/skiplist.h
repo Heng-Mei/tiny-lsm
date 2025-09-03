@@ -147,43 +147,13 @@ class SkipList {
   void clear();  // 清空跳表，释放内存
 
   SkipListIterator begin();
-  SkipListIterator begin_preffix(const std::string& preffix);
+  SkipListIterator begin_prefix(const std::string& prefix);
 
   SkipListIterator end();
-  SkipListIterator end_preffix(const std::string& preffix);
+  SkipListIterator end_prefix(const std::string& prefix);
 
-  // ? 这里单调谓词的含义是, 整个数据库只会有一段连续区间满足此谓词
-  // ? 例如之前特化的前缀查询，以及后续可能的范围查询，都可以转化为谓词查询
-  // ? 返回第一个满足谓词的位置和最后一个满足谓词的迭代器
-  // ? 如果不存在, 范围nullptr
-  // ? 谓词作用于key, 且保证满足谓词的结果只在一段连续的区间内,
-  // 例如前缀匹配的谓词 ? predicate返回值: ?   0: 满足谓词 ?   >0: 不满足谓词,
-  // 需要向右移动 ?   <0: 不满足谓词, 需要向左移动 ! Skiplist
-  // 中的谓词查询不会进行事务id的判断, 需要上层自己进行判断
-  template <typename F>
-    requires std::is_invocable_r_v<int, F, const std::string&>
-  auto iters_monotony_predicate(F&& predicate)
-      -> std::optional<std::pair<SkipListIterator, SkipListIterator>> {
-    auto start = lower_bound(std::string{},
-                             [&](const std::string& key, const std::string&) {
-                               return predicate(key) > 0;
-                             });
-
-    if (start == std::nullopt) {
-      return std::nullopt;
-    }
-
-    auto end = upper_bound(std::string{},
-                           [&](const std::string&, const std::string& key) {
-                             return predicate(key) < 0;
-                           });
-
-    return std::make_optional(std::make_pair(
-        *start, end != std::nullopt ? *end : SkipListIterator{nullptr}));
-  }
-
-  template <typename Key,
-            std::predicate<const std::string&, const Key&> Compare>
+  template <typename Key, typename Compare>
+    requires std::predicate<Compare&, const std::string&, const Key&>
   auto lower_bound(const Key& key,
                    Compare comp) -> std::optional<SkipListIterator> {
     auto ptr = head;
@@ -198,8 +168,8 @@ class SkipList {
     return std::make_optional(SkipListIterator{ptr->forward_[0]});
   }
 
-  template <typename Key,
-            std::predicate<const Key&, const std::string&> Compare>
+  template <typename Key, typename Compare>
+    requires std::predicate<Compare&, const std::string&, const Key&>
   auto upper_bound(const Key& key,
                    Compare comp) -> std::optional<SkipListIterator> {
     auto ptr = head;
@@ -223,6 +193,37 @@ class SkipList {
   template <typename Key>
   auto upper_bound(const Key& key) -> std::optional<SkipListIterator> {
     return upper_bound(key, std::less<std::string>{});
+  }
+
+  // ? 这里单调谓词的含义是, 整个数据库只会有一段连续区间满足此谓词
+  // ? 例如之前特化的前缀查询，以及后续可能的范围查询，都可以转化为谓词查询
+  // ? 返回第一个满足谓词的位置和最后一个满足谓词的迭代器
+  // ? 如果不存在, 范围nullptr
+  // ? 谓词作用于key, 且保证满足谓词的结果只在一段连续的区间内,
+  // 例如前缀匹配的谓词 ? predicate返回值: ?   0: 满足谓词 ?   >0: 不满足谓词,
+  // 需要向右移动 ?   <0: 不满足谓词, 需要向左移动 ! Skiplist
+  // 中的谓词查询不会进行事务id的判断, 需要上层自己进行判断
+  template <typename F>
+    requires std::is_invocable_r_v<int, F, const std::string&>
+  auto iters_monotony_predicate(F&& predicate)
+      -> std::optional<std::pair<SkipListIterator, SkipListIterator>> {
+    
+    auto start = lower_bound(std::string{},
+                             [&](const std::string& key, const std::string&) {
+                               return predicate(key) > 0;
+                             });
+
+    if (start == std::nullopt) {
+      return std::nullopt;
+    }
+
+    auto end = upper_bound(std::string{},
+                           [&](const std::string&, const std::string& key) {
+                             return predicate(key) < 0;
+                           });
+
+    return std::make_optional(std::make_pair(
+        *start, end != std::nullopt ? *end : SkipListIterator{nullptr}));
   }
 
   void print_skiplist();

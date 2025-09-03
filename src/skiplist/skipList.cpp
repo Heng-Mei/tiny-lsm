@@ -225,14 +225,14 @@ SkipListIterator SkipList::end() {
 
 // 找到前缀的起始位置
 // 返回第一个前缀匹配或者大于前缀的迭代器
-SkipListIterator SkipList::begin_preffix(const std::string& prefix) {
+SkipListIterator SkipList::begin_prefix(const std::string& prefix) {
   // TODO: Lab1.3 任务：实现前缀查询的起始位置
   auto it_opt = lower_bound(prefix);
   return it_opt ? *it_opt : SkipListIterator{nullptr};
 }
 
 // 找到前缀的终结位置
-SkipListIterator SkipList::end_preffix(const std::string& prefix) {
+SkipListIterator SkipList::end_prefix(const std::string& prefix) {
   // TODO: Lab1.3 任务：实现前缀查询的终结位置
   std::string next_prefix = prefix;
   if (!next_prefix.empty()) {

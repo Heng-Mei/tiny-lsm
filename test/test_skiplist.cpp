@@ -199,44 +199,44 @@ TEST(SkipListTest, IteratorPreffix) {
   skipList.put("cherry2", "6", 0);
 
   // 测试前缀 "ap"
-  auto it = skipList.begin_preffix("ap");
+  auto it = skipList.begin_prefix("ap");
   ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "apple");
 
   // 测试前缀 "ba"
-  it = skipList.begin_preffix("ba");
+  it = skipList.begin_prefix("ba");
   ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "banana");
 
   // 测试前缀 "ch"
-  it = skipList.begin_preffix("ch");
+  it = skipList.begin_prefix("ch");
   ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "cherry");
 
   // 测试前缀 "z"
-  it = skipList.begin_preffix("z");
+  it = skipList.begin_prefix("z");
   EXPECT_TRUE(it == skipList.end());
 
   // 测试前缀 "berr"
-  it = skipList.begin_preffix("berr");
+  it = skipList.begin_prefix("berr");
   ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "berry");
 
   // 测试前缀 "a"
-  it = skipList.begin_preffix("a");
+  it = skipList.begin_prefix("a");
   ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "apple");
 
   // 测试前缀结束位置
-  it = skipList.end_preffix("a");
+  it = skipList.end_prefix("a");
   ASSERT_TRUE(it != skipList.end());
   EXPECT_EQ(it.get_key(), "banana");
 
-  it = skipList.end_preffix("cherry");
+  it = skipList.end_prefix("cherry");
   EXPECT_TRUE(it == skipList.end());
 
-  EXPECT_EQ(skipList.begin_preffix("not exist"),
-            skipList.end_preffix("not exist"));
+  EXPECT_EQ(skipList.begin_prefix("not exist"),
+            skipList.end_prefix("not exist"));
 }
 
 TEST(SkipListTest, ItersPredicate_Base) {
