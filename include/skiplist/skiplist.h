@@ -102,9 +102,9 @@ class SkipListIterator : public BaseIterator {
 class SkipList {
  private:
   std::shared_ptr<SkipListNode>
-      head;               // 跳表的头节点，不存储实际数据，用于遍历跳表
-  int max_level;          // 跳表的最大层级数，限制跳表的高度
-  int current_level;      // 跳表当前的实际层级数，动态变化
+      head;  // 跳表的头节点，不存储实际数据，用于遍历跳表
+  int max_level;      // 跳表的最大层级数，限制跳表的高度
+  int current_level;  // 跳表当前的实际层级数，动态变化
   size_t size_bytes = 0;  // 跳表当前占用的内存大小（字节数），用于跟踪内存使用
   // std::shared_mutex rw_mutex; // ! 目前看起来这个锁是冗余的, 在上层控制即可,
   // 后续考虑是否需要细粒度的锁
@@ -166,30 +166,29 @@ class SkipList {
       -> std::optional<std::pair<SkipListIterator, SkipListIterator>> {
     auto start = lower_bound(std::string{},
                              [&](const std::string& key, const std::string&) {
-                               return predicate(key) < 0;
+                               return predicate(key) > 0;
                              });
 
-    if (!start) {
+    if (start == std::nullopt) {
       return std::nullopt;
     }
 
     auto end = upper_bound(std::string{},
                            [&](const std::string&, const std::string& key) {
-                             return predicate(key) <= 0;
+                             return predicate(key) < 0;
                            });
 
-    return std::make_optional(
-        std::make_pair(*start, end ? *end : SkipListIterator{nullptr}));
+    return std::make_optional(std::make_pair(
+        *start, end != std::nullopt ? *end : SkipListIterator{nullptr}));
   }
 
-  template <typename Value,
-            std::predicate<const std::string&, const Value&> Compare>
-  auto lower_bound(const Value& value, Compare comp)
-      -> std::optional<SkipListIterator> {
+  template <typename Key,
+            std::predicate<const std::string&, const Key&> Compare>
+  auto lower_bound(const Key& key,
+                   Compare comp) -> std::optional<SkipListIterator> {
     auto ptr = head;
     for (int i = max_level - 1; i >= 0; i--) {
-      while (ptr->forward_[i] != nullptr &&
-             comp(ptr->forward_[i]->value_, value)) {
+      while (ptr->forward_[i] != nullptr && comp(ptr->forward_[i]->key_, key)) {
         ptr = ptr->forward_[i];
       }
     }
@@ -199,19 +198,14 @@ class SkipList {
     return std::make_optional(SkipListIterator{ptr->forward_[0]});
   }
 
-  template <typename Value>
-  auto lower_bound(const Value& value) -> std::optional<SkipListIterator> {
-    return lower_bound(value, std::less<std::string>{});
-  }
-
-  template <typename Value,
-            std::predicate<const Value&, const std::string&> Compare>
-  auto upper_bound(const Value& value, Compare comp)
-      -> std::optional<SkipListIterator> {
+  template <typename Key,
+            std::predicate<const Key&, const std::string&> Compare>
+  auto upper_bound(const Key& key,
+                   Compare comp) -> std::optional<SkipListIterator> {
     auto ptr = head;
     for (int i = max_level - 1; i >= 0; i--) {
       while (ptr->forward_[i] != nullptr &&
-             !comp(value, ptr->forward_[i]->value_)) {
+             !comp(key, ptr->forward_[i]->key_)) {
         ptr = ptr->forward_[i];
       }
     }
@@ -221,9 +215,14 @@ class SkipList {
     return std::make_optional(SkipListIterator{ptr->forward_[0]});
   }
 
-  template <typename Value>
-  auto upper_bound(const Value& value) -> std::optional<SkipListIterator> {
-    return upper_bound(value, std::less<std::string>{});
+  template <typename Key>
+  auto lower_bound(const Key& key) -> std::optional<SkipListIterator> {
+    return lower_bound(key, std::less<std::string>{});
+  }
+
+  template <typename Key>
+  auto upper_bound(const Key& key) -> std::optional<SkipListIterator> {
+    return upper_bound(key, std::less<std::string>{});
   }
 
   void print_skiplist();
