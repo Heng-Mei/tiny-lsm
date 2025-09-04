@@ -21,14 +21,14 @@ enum class IteratorType {
 };
 
 class BaseIterator {
-public:
+ public:
   using value_type = std::pair<std::string, std::string>;
-  using pointer = value_type *;
-  using reference = value_type &;
+  using pointer = value_type*;
+  using reference = value_type&;
 
-  virtual BaseIterator &operator++() = 0;
-  virtual bool operator==(const BaseIterator &other) const = 0;
-  virtual bool operator!=(const BaseIterator &other) const = 0;
+  virtual BaseIterator& operator++() = 0;
+  virtual bool operator==(const BaseIterator& other) const = 0;
+  virtual bool operator!=(const BaseIterator& other) const = 0;
   virtual value_type operator*() const = 0;
   virtual IteratorType get_type() const = 0;
   virtual uint64_t get_tranc_id() const = 0;
@@ -43,38 +43,61 @@ struct SearchItem {
   std::string value_;
   uint64_t tranc_id_;
   int idx_;
-  int level_; // 来自sst的level
+  int level_;  // 来自sst的level
 
   SearchItem() = default;
-  SearchItem(std::string k, std::string v, int i, int l, uint64_t tranc_id)
-      : key_(std::move(k)), value_(std::move(v)), idx_(i), level_(l),
-        tranc_id_(tranc_id) {}
-};
+  SearchItem(const std::string& k,
+             const std::string& v,
+             int i,
+             int l,
+             uint64_t tranc_id)
+      : key_(k), value_(v), idx_(i), level_(l), tranc_id_(tranc_id) {}
 
-bool operator<(const SearchItem &a, const SearchItem &b);
-bool operator>(const SearchItem &a, const SearchItem &b);
-bool operator==(const SearchItem &a, const SearchItem &b);
+  bool operator<(const SearchItem& other) const {
+    if (key_ < other.key_) {
+      return true;
+    }
+    if (key_ == other.key_) {
+      return idx_ > other.idx_;
+    }
+    return false;
+  }
+
+  bool operator>(const SearchItem& other) const {
+    if (key_ > other.key_) {
+      return true;
+    }
+    if (key_ == other.key_) {
+      return idx_ < other.idx_;
+    }
+    return false;
+  }
+
+  bool operator==(const SearchItem& other) const {
+    return key_ == other.key_ && idx_ == other.idx_ && level_ == other.level_;
+  }
+};
 
 // *************************** HeapIterator ***************************
 class HeapIterator : public BaseIterator {
   friend class SstIterator;
 
-public:
+ public:
   HeapIterator() = default;
   HeapIterator(std::vector<SearchItem> item_vec, uint64_t max_tranc_id);
-  pointer operator->() const;
+  auto operator->() const -> pointer;
   virtual value_type operator*() const override;
-  BaseIterator &operator++() override;
+  BaseIterator& operator++() override;
   BaseIterator operator++(int) = delete;
-  virtual bool operator==(const BaseIterator &other) const override;
-  virtual bool operator!=(const BaseIterator &other) const override;
+  virtual bool operator==(const BaseIterator& other) const override;
+  virtual bool operator!=(const BaseIterator& other) const override;
 
   virtual IteratorType get_type() const override;
   virtual uint64_t get_tranc_id() const override;
   virtual bool is_end() const override;
   virtual bool is_valid() const override;
 
-private:
+ private:
   bool top_value_legal() const;
 
   // 跳过当前不可见事务的id (如果开启了事务功能)
@@ -82,11 +105,12 @@ private:
 
   void update_current() const;
 
-private:
-  std::priority_queue<SearchItem, std::vector<SearchItem>,
+ private:
+  std::priority_queue<SearchItem,
+                      std::vector<SearchItem>,
                       std::greater<SearchItem>>
       items;
-  mutable std::shared_ptr<value_type> current; // 用于存储当前元素
+  mutable std::shared_ptr<value_type> current;  // 用于存储当前元素
   uint64_t max_tranc_id_ = 0;
 };
-} // namespace tiny_lsm
+}  // namespace tiny_lsm

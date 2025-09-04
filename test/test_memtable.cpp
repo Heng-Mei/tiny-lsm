@@ -1,13 +1,13 @@
-#include "../include/consts.h"
-#include "../include/iterator/iterator.h"
-#include "../include/logger/logger.h"
-#include "../include/memtable/memtable.h"
 #include <gtest/gtest.h>
 #include <iomanip>
 #include <string>
 #include <thread>
 #include <utility>
 #include <vector>
+#include "../include/consts.h"
+#include "../include/iterator/iterator.h"
+#include "../include/logger/logger.h"
+#include "../include/memtable/memtable.h"
 
 using namespace ::tiny_lsm;
 
@@ -132,6 +132,10 @@ TEST(MemTableTest, IteratorComplexOperations) {
   std::vector<std::pair<std::string, std::string>> result1;
   for (auto it = memtable.begin(0); it != memtable.end(); ++it) {
     result1.push_back(*it);
+    ASSERT_LE(result1.size(), 3);
+    if (result1.size() > 3) {
+      break;
+    }
   }
   ASSERT_EQ(result1.size(), 3);
   EXPECT_EQ(result1[0].first, "key1");
@@ -142,16 +146,21 @@ TEST(MemTableTest, IteratorComplexOperations) {
   memtable.frozen_cur_table();
 
   // 第二批操作：更新和删除
-  memtable.put("key2", "value2_updated", 0); // 更新已存在的key
-  memtable.remove("key1", 0);                // 删除一个key
-  memtable.put("key4", "value4", 0);         // 插入新key
+  memtable.put("key2", "value2_updated", 0);  // 更新已存在的key
+  memtable.remove("key1", 0);                 // 删除一个key
+  memtable.put("key4", "value4", 0);          // 插入新key
 
   // 验证第二批操作
   std::vector<std::pair<std::string, std::string>> result2;
   for (auto it = memtable.begin(0); it != memtable.end(); ++it) {
     result2.push_back(*it);
+    
+    ASSERT_LE(result2.size(), 3);
+    if (result2.size() > 3) {
+      break;
+    }
   }
-  ASSERT_EQ(result2.size(), 3); // key1被删除，key4被添加
+  ASSERT_EQ(result2.size(), 3);  // key1被删除，key4被添加
   EXPECT_EQ(result2[0].first, "key2");
   EXPECT_EQ(result2[0].second, "value2_updated");
   EXPECT_EQ(result2[2].first, "key4");
@@ -160,10 +169,10 @@ TEST(MemTableTest, IteratorComplexOperations) {
   memtable.frozen_cur_table();
 
   // 第三批操作：混合操作
-  memtable.put("key1", "value1_new", 0); // 重新插入被删除的key
-  memtable.remove("key3", 0);            // 删除一个在第一个frozen table中的key
-  memtable.put("key2", "value2_final", 0); // 再次更新key2
-  memtable.put("key5", "value5", 0);       // 插入新key
+  memtable.put("key1", "value1_new", 0);  // 重新插入被删除的key
+  memtable.remove("key3", 0);  // 删除一个在第一个frozen table中的key
+  memtable.put("key2", "value2_final", 0);  // 再次更新key2
+  memtable.put("key5", "value5", 0);        // 插入新key
 
   // 验证最终结果
   std::vector<std::pair<std::string, std::string>> final_result;
@@ -172,7 +181,7 @@ TEST(MemTableTest, IteratorComplexOperations) {
   }
 
   // 验证最终状态
-  ASSERT_EQ(final_result.size(), 4); // key1, key2, key4, key5
+  ASSERT_EQ(final_result.size(), 4);  // key1, key2, key4, key5
 
   // 验证具体内容
   EXPECT_EQ(final_result[0].first, "key1");
@@ -195,15 +204,15 @@ TEST(MemTableTest, IteratorComplexOperations) {
 
 TEST(MemTableTest, ConcurrentOperations) {
   MemTable memtable;
-  const int num_readers = 4;       // 读线程数
-  const int num_writers = 2;       // 写线程数
-  const int num_operations = 1000; // 每个线程的操作数
+  const int num_readers = 4;        // 读线程数
+  const int num_writers = 2;        // 写线程数
+  const int num_operations = 1000;  // 每个线程的操作数
 
   // 用于同步所有线程的开始
   std::atomic<bool> start{false};
   // 用于等待所有线程完成
   std::atomic<int> completion_counter{num_readers + num_writers +
-                                      1}; // +1 for freeze thread
+                                      1};  // +1 for freeze thread
 
   // 记录写入的键，用于验证
   std::vector<std::string> inserted_keys;
@@ -338,10 +347,10 @@ TEST(MemTableTest, ConcurrentOperations) {
       end_time - start_time);
 
   // 等待所有线程结束
-  for (auto &w : writers) {
+  for (auto& w : writers) {
     w.join();
   }
-  for (auto &r : readers) {
+  for (auto& r : readers) {
     r.join();
   }
   freeze_thread.join();
@@ -359,8 +368,9 @@ TEST(MemTableTest, ConcurrentOperations) {
   //           << "\nFrozen size: " << memtable.get_frozen_size() << std::endl;
 
   // 基本正确性检查
-  EXPECT_GT(memtable.get_total_size(), 0);             // 总大小应该大于0
-  EXPECT_LE(final_size, num_writers * num_operations); // 大小不应超过最大可能值
+  EXPECT_GT(memtable.get_total_size(), 0);  // 总大小应该大于0
+  EXPECT_LE(final_size,
+            num_writers * num_operations);  // 大小不应超过最大可能值
 }
 
 TEST(MemTableTest, PreffixIter) {
@@ -460,7 +470,7 @@ TEST(MemTableTest, ItersPredicate_Base) {
 
   // 测试前缀匹配
   auto prefix_result =
-      memtable.iters_monotony_predicate(0, [](const std::string &key) {
+      memtable.iters_monotony_predicate(0, [](const std::string& key) {
         auto match_str = key.substr(0, 3);
         if (match_str == "pre") {
           return 0;
@@ -481,9 +491,9 @@ TEST(MemTableTest, ItersPredicate_Base) {
   EXPECT_EQ(prefix_begin_iter->second, "value3");
 
   // 测试范围匹配
-  auto range = std::make_pair("l", "n"); // [l, n)
+  auto range = std::make_pair("l", "n");  // [l, n)
   auto range_result =
-      memtable.iters_monotony_predicate(0, [&range](const std::string &key) {
+      memtable.iters_monotony_predicate(0, [&range](const std::string& key) {
         if (key < range.first) {
           return 1;
         } else if (key >= range.second) {
@@ -526,7 +536,7 @@ TEST(MemTableTest, ItersPredicate_Large) {
   memtable.remove("key1015", 0);
 
   auto result =
-      memtable.iters_monotony_predicate(0, [](const std::string &key) {
+      memtable.iters_monotony_predicate(0, [](const std::string& key) {
         if (key < "key1010") {
           return 1;
         } else if (key >= "key1020") {
@@ -549,7 +559,7 @@ TEST(MemTableTest, ItersPredicate_Large) {
   EXPECT_TRUE(range_begin_iter.is_end());
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   init_spdlog_file();
   // reset_log_level("trace"); // ! 慎用, 日志输出量非常大

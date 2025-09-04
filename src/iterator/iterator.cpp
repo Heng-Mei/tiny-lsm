@@ -1,33 +1,19 @@
 #include "../../include/iterator/iterator.h"
+#include <algorithm>
 #include <tuple>
 #include <vector>
 
 namespace tiny_lsm {
-
-// *************************** SearchItem ***************************
-bool operator<(const SearchItem &a, const SearchItem &b) {
-  // TODO: Lab2.2 实现比较规则
-  return true;
-}
-
-bool operator>(const SearchItem &a, const SearchItem &b) {
-  // TODO: Lab2.2 实现比较规则
-  return true;
-}
-
-bool operator==(const SearchItem &a, const SearchItem &b) {
-  // TODO: Lab2.2 实现比较规则
-  return true;
-}
-
 // *************************** HeapIterator ***************************
 HeapIterator::HeapIterator(std::vector<SearchItem> item_vec,
                            uint64_t max_tranc_id)
     : max_tranc_id_(max_tranc_id) {
   // TODO: Lab2.2 实现 HeapIterator 构造函数
+  std::ranges::for_each(item_vec,
+                        [&](const SearchItem& item) { items.emplace(item); });
 }
 
-HeapIterator::pointer HeapIterator::operator->() const {
+auto HeapIterator::operator->() const -> HeapIterator::pointer {
   // TODO: Lab2.2 实现 -> 重载
   return nullptr;
 }
@@ -37,17 +23,17 @@ HeapIterator::value_type HeapIterator::operator*() const {
   return {};
 }
 
-BaseIterator &HeapIterator::operator++() {
+BaseIterator& HeapIterator::operator++() {
   // TODO: Lab2.2 实现 ++ 重载
   return *this;
 }
 
-bool HeapIterator::operator==(const BaseIterator &other) const {
+bool HeapIterator::operator==(const BaseIterator& other) const {
   // TODO: Lab2.2 实现 == 重载
   return true;
 }
 
-bool HeapIterator::operator!=(const BaseIterator &other) const {
+bool HeapIterator::operator!=(const BaseIterator& other) const {
   // TODO: Lab2.2 实现 != 重载
   return true;
 }
@@ -63,8 +49,12 @@ void HeapIterator::skip_by_tranc_id() {
   // TODO: Lab2.2 后续的Lab实现, 只是作为标记提醒
 }
 
-bool HeapIterator::is_end() const { return items.empty(); }
-bool HeapIterator::is_valid() const { return !items.empty(); }
+bool HeapIterator::is_end() const {
+  return items.empty();
+}
+bool HeapIterator::is_valid() const {
+  return !items.empty();
+}
 
 void HeapIterator::update_current() const {
   // current 缓存了当前键值对的值, 你实现 -> 重载时可能需要
@@ -75,5 +65,7 @@ IteratorType HeapIterator::get_type() const {
   return IteratorType::HeapIterator;
 }
 
-uint64_t HeapIterator::get_tranc_id() const { return max_tranc_id_; }
-} // namespace tiny_lsm
+uint64_t HeapIterator::get_tranc_id() const {
+  return max_tranc_id_;
+}
+}  // namespace tiny_lsm
