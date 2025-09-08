@@ -110,7 +110,7 @@ class HeapIterator : public BaseIterator {
                       std::vector<SearchItem>,
                       std::greater<SearchItem>>
       items;
-  mutable std::shared_ptr<value_type> current;  // 用于存储当前元素
+  mutable std::shared_ptr<value_type> current = nullptr;  // 用于存储当前元素
   uint64_t max_tranc_id_ = 0;
 };
 }  // namespace tiny_lsm

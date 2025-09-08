@@ -284,12 +284,26 @@ size_t MemTable::get_total_size() {
 
 auto MemTable::begin(uint64_t tranc_id) -> HeapIterator {
   // TODO Lab 2.2 MemTable 的迭代器
-  return {};
+  std::vector<SearchItem> items;
+  for (auto table_iter = frozen_tables.rbegin();
+       table_iter != frozen_tables.rend(); table_iter++) {
+    auto& table = *table_iter;
+    for (auto iter = table->begin(); !iter.is_end(); ++iter) {
+      items.emplace_back(iter.get_key(), iter.get_value(),
+                         std::distance(frozen_tables.rbegin(), table_iter), 0,
+                         iter.get_tranc_id());
+    }
+  }
+  for (auto iter = current_table->begin(); !iter.is_end(); ++iter) {
+    items.emplace_back(iter.get_key(), iter.get_value(), frozen_tables.size(),
+                       0, iter.get_tranc_id());
+  }
+  return HeapIterator(items, tranc_id);
 }
 
 auto MemTable::end() -> HeapIterator {
   // TODO Lab 2.2 MemTable 的迭代器
-  return HeapIterator{};
+  return {};
 }
 
 auto MemTable::iters_preffix(const std::string& preffix,
